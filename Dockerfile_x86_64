@@ -10,7 +10,7 @@ ARG PGID=1000
 RUN addgroup -g ${PGID} -S alpine && \
     adduser -u ${PUID} -G alpine -h /home/alpine -D alpine
 RUN set -xe \
-    && apk add --no-cache --purge -uU lua git \
+    && apk add --no-cache --purge -uU lua lua-dev git \
     && apk add --no-cache --virtual .build-deps build-base unzip \
     && cd /tmp \
     && git clone https://github.com/keplerproject/luarocks.git \
