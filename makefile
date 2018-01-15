@@ -70,7 +70,7 @@ rm : stop
 	docker rm -f docker_$(SVCNAME)
 
 run :
-	docker run --rm -it $(NAMEFLAGS) $(RUNFLAGS) $(PORTFLAGS) $(MOUNTFLAGS) $(OTHERFLAGS) $(IMAGETAG) bash
+	docker run --rm -it $(NAMEFLAGS) $(RUNFLAGS) $(PORTFLAGS) $(MOUNTFLAGS) $(OTHERFLAGS) $(IMAGETAG) $(SHCOMMAND)
 
 rshell :
 	docker exec -u root -it docker_$(SVCNAME) $(SHCOMMAND)
