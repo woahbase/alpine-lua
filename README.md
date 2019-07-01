@@ -1,4 +1,4 @@
-[![build status][251]][232] [![commit][255]][231] [![version:x86_64][256]][235] [![size:x86_64][257]][235] [![version:armhf][258]][236] [![size:armhf][259]][236]
+[![build status][251]][232] [![commit][255]][231] [![version:x86_64][256]][235] [![size:x86_64][257]][235] [![version:armhf][258]][236] [![size:armhf][259]][236] [![version:armv7l][260]][237] [![size:armv7l][261]][237] [![version:aarch64][262]][238] [![size:aarch64][263]][238]
 
 ## [Alpine-Lua][234]
 #### Container for Alpine Linux + S6 + Lua + Luarocks
@@ -8,16 +8,18 @@ This [image][233] serves as the base image for applications
 / services that require [Lua][135] and [Luarocks][136] to manage
 dependencies.
 
-Based on [Alpine Linux][131] from my [alpine-s6][132] image with
+Based on [Alpine Linux][131] from my [alpine-glibc][132] image with
 the [s6][133] init system [overlayed][134] in it.
 
 The image is tagged respectively for the following architectures,
 * **armhf**
+* **armv7l**
+* **aarch64**
 * **x86_64** ( retagged as the `latest` )
 
-**armhf** builds have embedded binfmt_misc support and contain the
+**non-x86_64** builds have embedded binfmt_misc support and contain the
 [qemu-user-static][105] binary that allows for running it also inside
-an x64 environment that has it.
+an x86_64 environment that has it.
 
 ---
 #### Get the Image
@@ -93,14 +95,14 @@ docker restart docker_lua
 Get a shell inside a already running container,
 
 ```
-# make shell
+# make debug
 docker exec -it docker_lua /bin/bash
 ```
 
 set user or login as root,
 
 ```
-# make rshell
+# make rdebug
 docker exec -u root -it docker_lua /bin/bash
 ```
 
@@ -150,11 +152,9 @@ for other architectures.]
 docker build --rm --compress --force-rm \
   --no-cache=true --pull \
   -f ./Dockerfile_x86_64 \
-  --build-arg ARCH=x86_64 \
-  --build-arg DOCKERSRC=alpine-s6 \
+  --build-arg DOCKERSRC=woahbase/alpine-glibc:x86_64 \
   --build-arg PGID=1000 \
   --build-arg PUID=1000 \
-  --build-arg USERNAME=woahbase \
   -t woahbase/alpine-lua:x86_64 \
   .
 ```
@@ -167,7 +167,7 @@ docker run --rm -it \
   --name docker_lua --hostname lua \
   -e PGID=1000 -e PUID=1000 \
   woahbase/alpine-lua:x86_64 \
-  sh -ec 'lua -v; luarocks --help'
+  sh -ec 'lua -v; luarocks help'
 ```
 
 And finally, if you have push access,
@@ -196,7 +196,7 @@ Maintained by [WOAHBase][204].
 [109]: https://microbadger.com/
 
 [131]: https://alpinelinux.org/
-[132]: https://hub.docker.com/r/woahbase/alpine-s6
+[132]: https://hub.docker.com/r/woahbase/alpine-glibc
 [133]: https://skarnet.org/software/s6/
 [134]: https://github.com/just-containers/s6-overlay
 [135]: http://www.lua.org/
@@ -213,6 +213,8 @@ Maintained by [WOAHBase][204].
 [234]: https://woahbase.online/#/images/alpine-lua
 [235]: https://microbadger.com/images/woahbase/alpine-lua:x86_64
 [236]: https://microbadger.com/images/woahbase/alpine-lua:armhf
+[237]: https://microbadger.com/images/woahbase/alpine-lua:armv7l
+[238]: https://microbadger.com/images/woahbase/alpine-lua:aarch64
 
 [251]: https://travis-ci.org/woahbase/alpine-lua.svg?branch=master
 
@@ -223,3 +225,9 @@ Maintained by [WOAHBase][204].
 
 [258]: https://images.microbadger.com/badges/version/woahbase/alpine-lua:armhf.svg
 [259]: https://images.microbadger.com/badges/image/woahbase/alpine-lua:armhf.svg
+
+[260]: https://images.microbadger.com/badges/version/woahbase/alpine-lua:armv7l.svg
+[261]: https://images.microbadger.com/badges/image/woahbase/alpine-lua:armv7l.svg
+
+[262]: https://images.microbadger.com/badges/version/woahbase/alpine-lua:aarch64.svg
+[263]: https://images.microbadger.com/badges/image/woahbase/alpine-lua:aarch64.svg

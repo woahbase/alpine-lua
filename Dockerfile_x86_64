@@ -1,8 +1,6 @@
-ARG ARCH=frommakefile
 ARG DOCKERSRC=frommakefile
-ARG USERNAME=frommakefile
 #
-FROM ${USERNAME}/${DOCKERSRC}:${ARCH}
+FROM ${DOCKERSRC}
 #
 ARG PUID=1000
 ARG PGID=1000
@@ -19,6 +17,6 @@ RUN set -xe \
     && make build install \
     && cd \
     && apk del --purge .build-deps \
-    && rm -rf /var/cache/apk/* /tmp/*
+    && rm -rf /var/cache/apk/* /tmp/* /root/.cache/luarocks
 # ENTRYPOINT ["/init"]
 # ENTRYPOINT ["/usr/bin/lua"]
