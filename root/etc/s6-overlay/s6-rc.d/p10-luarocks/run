@@ -1,0 +1,42 @@
+#!/usr/bin/with-contenv bash
+set -e
+
+# install these packages using luarocks, specified on runtime
+# S6_LUA_PACKAGES=""; # list of packages passed at runtime, if required
+if [ -n "${S6_LUA_PACKAGES}" ]; then
+    OLDIFS=$IFS;
+    IFS=',';
+    for rock in ${S6_LUA_PACKAGES}; do
+        IFS=$OLDIFS;
+        luarocks install ${rock[@]};
+    done;
+    IFS=$OLDIFS;
+fi;
+
+# make sure user packages get installed into USERHOMEDIR/.luarocks
+# in case HOME is not set or is /root
+USERHOMEDIR="$(getent passwd ${S6_USER:-alpine} | cut -d: -f6)";
+# S6_LUA_USER_PACKAGES=""; # list of packages passed at runtime, if required
+if [ -n "${S6_LUA_USER_PACKAGES}" ]; then
+    OLDIFS=$IFS;
+    IFS=',';
+    for rock in ${S6_LUA_USER_PACKAGES}; do
+        IFS=$OLDIFS;
+        HOME=${USERHOMEDIR} \
+        s6-setuidgid "${S6_USER:-alpine}" \
+            luarocks install \
+            --local \
+            ${rock[@]};
+    done;
+    IFS=$OLDIFS;
+
+    # echo "Installed user packages in ${USERHOMEDIR}/.luarocks.";
+    # echo 'Remember to run: eval "$(luarocks path --bin)"';
+
+    # add eval-script to be run on shell init ($SHELL is bash not sh)
+    echo 'eval "$(luarocks path --bin)"' >> /etc/bash/bashrc;
+fi;
+
+# add user package binaries dir to PATH
+# visible to with-contenv
+echo -en "${USERHOMEDIR}/.luarocks/bin:$PATH" > /run/s6/container_environment/PATH;
