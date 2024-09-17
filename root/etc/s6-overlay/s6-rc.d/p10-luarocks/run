@@ -1,9 +1,12 @@
 #!/usr/bin/with-contenv bash
 set -e
 
+vecho () { if [ "${S6_VERBOSITY:-1}" -gt 0 ]; then echo "[$0] $@"; fi; }
+
 # install these packages using luarocks, specified on runtime
 # S6_LUA_PACKAGES=""; # list of packages passed at runtime, if required
 if [ -n "${S6_LUA_PACKAGES}" ]; then
+    vecho "Installing global packages: ${S6_LUA_PACKAGES}";
     OLDIFS=$IFS;
     IFS=',';
     for rock in ${S6_LUA_PACKAGES}; do
@@ -18,6 +21,7 @@ fi;
 USERHOMEDIR="$(getent passwd ${S6_USER:-alpine} | cut -d: -f6)";
 # S6_LUA_USER_PACKAGES=""; # list of packages passed at runtime, if required
 if [ -n "${S6_LUA_USER_PACKAGES}" ]; then
+    vecho "Installing user packages: ${S6_LUA_USER_PACKAGES}";
     OLDIFS=$IFS;
     IFS=',';
     for rock in ${S6_LUA_USER_PACKAGES}; do

@@ -17,7 +17,7 @@ BUILDDATE := $(shell date -u +%Y%m%d)
 HOSTARCH  ?= $(call get_os_platform)
 # target architecture on build and run, defaults to host architecture
 ARCH      ?= $(HOSTARCH)
-IMAGEBASE ?= $(if $(filter scratch,$(SRCIMAGE)),scratch,$(REGISTRY)/$(ORGNAME)/$(OPSYS)-$(SRCIMAGE):$(ARCH))
+IMAGEBASE ?= $(if $(filter scratch,$(SRCIMAGE)),scratch,$(REGISTRY)/$(ORGNAME)/$(OPSYS)-$(SRCIMAGE):$(if $(SRCTAG),$(SRCTAG),$(ARCH)))
 IMAGETAG  ?= $(REGISTRY)/$(ORGNAME)/$(REPONAME):$(ARCH)
 CNTNAME   := docker_$(SVCNAME)
 CNTSHELL  := /bin/bash
@@ -43,10 +43,10 @@ LABELFLAGS ?= \
 	--label online.woahbase.branch=$(shell git rev-parse --abbrev-ref HEAD) \
 	--label online.woahbase.build-date=$(BUILDDATE) \
 	--label online.woahbase.build-number=$${BUILDNUMBER:-undefined} \
-	--label online.woahbase.source-image="$(if $(filter scratch,$(SRCIMAGE)),scratch,$(OPSYS)-$(SRCIMAGE):$(ARCH))" \
-	--label org.opencontainers.image.base.name="$(if $(filter scratch,$(SRCIMAGE)),scratch,docker.io/$(ORGNAME)/$(OPSYS)-$(SRCIMAGE):$(ARCH))" \
+	--label online.woahbase.source-image="$(if $(filter scratch,$(SRCIMAGE)),scratch,$(OPSYS)-$(SRCIMAGE):$(if $(SRCTAG),$(SRCTAG),$(ARCH)))" \
+	--label org.opencontainers.image.base.name="$(if $(filter scratch,$(SRCIMAGE)),scratch,docker.io/$(ORGNAME)/$(OPSYS)-$(SRCIMAGE):$(if $(SRCTAG),$(SRCTAG),$(ARCH)))" \
 	--label org.opencontainers.image.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
-	--label org.opencontainers.image.documentation="$(if $(DOC_URL),$(DOC_URL),https://woahbase.online/\#/images)/$(REPONAME)" \
+	--label org.opencontainers.image.documentation="$(if $(DOC_URL),$(DOC_URL),https://woahbase.online/images)/$(REPONAME)" \
 	--label org.opencontainers.image.revision=$(shell git rev-parse --short HEAD) \
 	--label org.opencontainers.image.source="$(shell git config --get remote.origin.url)" \
 	--label org.opencontainers.image.title=$(REPONAME) \
@@ -82,7 +82,13 @@ BUILDERFLAGS ?= \
 	#
 
 # runtime flags
-MOUNTFLAGS := # -v $(CURDIR):/home/alpine/project --workdir /home/alpine/project# -v $(CURDIR)/luarocks:/home/alpine/.luarocks
+MOUNTFLAGS := \
+	# -v $(CURDIR):/home/alpine/project \
+	# --workdir /home/alpine/project \
+	# -v $(CURDIR)/luarocks:/home/alpine/.luarocks \
+	# -v /etc/hosts:/etc/hosts:ro \
+	# -v /etc/localtime:/etc/localtime:ro \
+	#
 PORTFLAGS  := #
 PUID       := $(shell id -u)
 PGID       := $(shell id -g)# gid 100(users) usually pre exists
@@ -97,8 +103,6 @@ OTHERFLAGS := \
 	# -e S6_LUA_PACKAGES="luasocket 3.1.0,luajson 1.3.3" \
 	# -e S6_LUA_USER_PACKAGES="luasocket 3.1.0,luajson 1.3.3" \
 	# -e TZ=Asia/Kolkata \
-	# -v /etc/hosts:/etc/hosts:ro \
-	# -v /etc/localtime:/etc/localtime:ro \
 	#
 # all runtime flags combined here
 RUNFLAGS   := \
