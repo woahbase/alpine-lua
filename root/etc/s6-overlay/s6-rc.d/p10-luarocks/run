@@ -2,14 +2,18 @@
 set -e
 
 vecho () { if [ "${S6_VERBOSITY:-1}" -gt 0 ]; then echo "[$0] $@"; fi; }
+usercmd () { if [ "X${EUID}" != "X0" ]; then $@; else s6-setuidgid ${PUID:-1000}:${PGID:-1000} $@; fi; }
 
 # install these packages using luarocks, specified on runtime
 # S6_LUA_PACKAGES=""; # list of packages passed at runtime, if required
-if [ -n "${S6_LUA_PACKAGES}" ]; then
+if [ -n "${S6_LUA_PACKAGES}" ] \
+&& [ "X${EUID}" == "X0" ]; # requires root
+then
     vecho "Installing global packages: ${S6_LUA_PACKAGES}";
     OLDIFS=$IFS;
     IFS=',';
-    for rock in ${S6_LUA_PACKAGES}; do
+    for rock in ${S6_LUA_PACKAGES};
+    do
         IFS=$OLDIFS;
         luarocks install ${rock[@]};
     done;
@@ -18,29 +22,78 @@ fi;
 
 # make sure user packages get installed into USERHOMEDIR/.luarocks
 # in case HOME is not set or is /root
-USERHOMEDIR="$(getent passwd ${S6_USER:-alpine} | cut -d: -f6)";
+USERHOMEDIR="${S6_USERHOME:-$(getent passwd ${S6_USER:-alpine} | cut -d: -f6)}";
+# customizable install prefix location
+USERROCKSDIR="${USERROCKSDIR:-${USERHOMEDIR}/.luarocks}";
+# for arbitrary user, directory must exist and be writable
+
 # S6_LUA_USER_PACKAGES=""; # list of packages passed at runtime, if required
-if [ -n "${S6_LUA_USER_PACKAGES}" ]; then
+if [ -n "${S6_LUA_USER_PACKAGES}" ];
+then
     vecho "Installing user packages: ${S6_LUA_USER_PACKAGES}";
     OLDIFS=$IFS;
     IFS=',';
-    for rock in ${S6_LUA_USER_PACKAGES}; do
+    for rock in ${S6_LUA_USER_PACKAGES};
+    do
         IFS=$OLDIFS;
-        HOME=${USERHOMEDIR} \
-        s6-setuidgid "${S6_USER:-alpine}" \
+        HOME=$(dirname ${USERROCKSDIR}) \
+        usercmd \
             luarocks install \
-            --local \
+            --tree="${USERROCKSDIR}" \
             ${rock[@]};
     done;
     IFS=$OLDIFS;
 
-    # echo "Installed user packages in ${USERHOMEDIR}/.luarocks.";
-    # echo 'Remember to run: eval "$(luarocks path --bin)"';
-
-    # add eval-script to be run on shell init ($SHELL is bash not sh)
-    echo 'eval "$(luarocks path --bin)"' >> /etc/bash/bashrc;
+    if [ -z "${LUA_SKIP_MODIFY_SHELL}" ] \
+    && [ "X${EUID}" == "X0" ]; # requires root
+    then
+        # add eval-script to be run on shell init ($SHELL is bash not ash or sh)
+        echo 'eval "$(luarocks path --bin)"' >> /etc/bash/bashrc;
+    else
+        # running as non-root, cannot modify bashrc
+        # remind user to diy it
+        echo "Installed user packages in ${USERROCKSDIR}";
+        echo 'Remember to run: eval "$(luarocks path --bin)"';
+    fi;
 fi;
 
-# add user package binaries dir to PATH
+# optionally add user package binaries dir to PATH
 # visible to with-contenv
-echo -en "${USERHOMEDIR}/.luarocks/bin:$PATH" > /run/s6/container_environment/PATH;
+if [ -z "${LUA_SKIP_MODIFY_PATH}" ] \
+&& [ -d "${USERROCKSDIR}" ] \
+&& [[ "${PATH}" != *${USERROCKSDIR}/bin* ]];
+# && ls -A "${USERROCKSDIR}/bin" 1>/dev/null 2>&1
+# only check if dir exists, instead of checking if dir is empty
+# because it might get populated in a later phase
+then
+    vecho "Include luarocks (user) bin directory in \$PATH";
+    echo -en "${USERROCKSDIR}/bin:${PATH}" > /run/s6/container_environment/PATH;
+fi;
+
+# optionally add user package libaries dir to LUA_PATH
+# visible to with-contenv
+if [ -z "${LUA_SKIP_MODIFY_LUAPATH}" ] \
+&& [ -d "${USERROCKSDIR}" ] \
+&& [[ "$(luarocks path --lr-path)" != *${USERROCKSDIR}/share* ]];
+# && ls -A "${USERROCKSDIR}/share" 1>/dev/null 2>&1
+# only check if dir exists, instead of checking if dir is empty
+# because it might get populated in a later phase
+then
+    vecho "Include luarocks (user) share directory in \$LUA_PATH";
+    echo -en "$(luarocks path --lr-path);${USERROCKSDIR}/share/lua/${LUAMAJMIN}/?.lua;${USERROCKSDIR}/share/lua/${LUAMAJMIN}/?/init.lua" \
+        > /run/s6/container_environment/LUA_PATH;
+fi;
+
+# optionally add user package shared objects dir to LUA_CPATH
+# visible to with-contenv
+if [ -z "${LUA_SKIP_MODIFY_LUACPATH}" ] \
+&& [ -d "${USERROCKSDIR}" ] \
+&& [[ "$(luarocks path --lr-cpath)" != *${USERROCKSDIR}/lib* ]];
+# && ls -A "${USERROCKSDIR}/lib" 1>/dev/null 2>&1
+# only check if dir exists, instead of checking if dir is empty
+# because it might get populated in a later phase
+then
+    vecho "Include luarocks (user) lib directory in \$LUA_CPATH";
+    echo -en "$(luarocks path --lr-cpath);${USERROCKSDIR}/lib/lua/${LUAMAJMIN}/?.so" \
+        > /run/s6/container_environment/LUA_CPATH;
+fi;
